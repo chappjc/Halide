@@ -25,7 +25,7 @@
 #define EXPORT __declspec(dllimport)
 #endif
 #else
-#define EXPORT
+#define EXPORT __attribute__((visibility("default")))
 #endif
 #endif
 
