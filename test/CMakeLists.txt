@@ -8,12 +8,8 @@ option(WITH_TEST_GENERATORS "Build Generator tests" ON)
 
 if (WITH_TEST_INTERNAL)
   message(STATUS "Internal tests enabled")
-  halide_project(test_internal internal internal.cpp)
-  # Run internal tests after building
-  add_custom_command(TARGET test_internal
-                     POST_BUILD
-                     COMMAND test_internal
-                     COMMENT "Running internal tests")
+  halide_project(_test_internal internal internal.cpp)
+  add_to_test_group("test_internal" _test_internal)
 else()
   message(WARNING "Internal tests disabled")
 endif()
@@ -37,6 +33,11 @@ function(tests folder)
     list(APPEND TEST_NAMES "${folder}_${name}")
     target_include_directories("${folder}_${name}" PRIVATE "${CMAKE_SOURCE_DIR}")
     target_compile_definitions("${folder}_${name}"  PRIVATE "-DLLVM_VERSION=${LLVM_VERSION}")
+    if(NOT "${folder}" STREQUAL "error")
+      # TODO(srj): need to add special case for error tests, since they
+      # are expected to fail
+      add_to_test_group("test_${folder}" "${folder}_${name}")
+    endif()
   endforeach()
   set(TEST_NAMES "${TEST_NAMES}" PARENT_SCOPE)
 endfunction(tests)
@@ -84,6 +85,10 @@ function(add_test_generator NAME)
                        SRCS "${CMAKE_CURRENT_SOURCE_DIR}/generator/${NAME}_generator.cpp"
                        STUB_DEPS ${args_STUB_DEPS}
                        ${args_WITH_STUB})
+  # TODO(srj): not all of the rungen targets will build;
+  # we need to blacklist the ones known & expected to be nonfunctional.
+  # Leaving this here now to show where it needs to go.
+  # add_to_test_group(test_generators "${NAME}.rungen")
 endfunction(add_test_generator)
 
 function(halide_define_jit_test NAME)
@@ -105,6 +110,7 @@ function(halide_define_jit_test NAME)
     halide_add_generator_stub_dependency(TARGET "generator_jit_${NAME}"
                                          STUB_GENERATOR_TARGET ${STUB_DEP})
   endforeach()
+  add_to_test_group(test_generators "generator_jit_${NAME}")
 endfunction(halide_define_jit_test)
 
 # Usage:
@@ -122,6 +128,7 @@ function(halide_define_aot_test NAME)
   set(TARGET "generator_aot_${NAME}")
 
   add_executable("${TARGET}" "${CMAKE_CURRENT_SOURCE_DIR}/generator/${NAME}_aottest.cpp")
+  add_to_test_group(test_generators "${TARGET}")
   target_include_directories("${TARGET}" PRIVATE "${CMAKE_SOURCE_DIR}/tools")
   target_include_directories("${TARGET}" PRIVATE "${CMAKE_SOURCE_DIR}/src/runtime")
   target_include_directories("${TARGET}" PRIVATE "${CMAKE_SOURCE_DIR}")

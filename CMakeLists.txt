@@ -177,6 +177,27 @@ foreach (build_config Debug Release RelWithDebInfo MinSizeRel)
   endforeach()
 endforeach()
 
+function(add_to_test_group TEST_GROUP TARGET)
+  if(NOT TARGET ALL_TESTS)
+    add_custom_target(ALL_TESTS)
+    set_target_properties(ALL_TESTS PROPERTIES EXCLUDE_FROM_ALL FALSE)
+  endif()
+  if(NOT TARGET "${TEST_GROUP}")
+    add_custom_target("${TEST_GROUP}")
+    set_target_properties("${TEST_GROUP}" PROPERTIES EXCLUDE_FROM_ALL FALSE)
+  endif()
+  if(NOT TARGET "test_${TARGET}")
+    add_custom_target("test_${TARGET}" 
+                       COMMAND "${TARGET}"
+                       DEPENDS "${TARGET}")
+    set_target_properties("test_${TARGET}" PROPERTIES EXCLUDE_FROM_ALL FALSE)
+  endif()
+  add_dependencies("${TEST_GROUP}" "test_${TARGET}")
+  add_dependencies(ALL_TESTS "test_${TARGET}")
+endfunction()
+
+add_custom_target(run_tests DEPENDS ALL_TESTS)
+
 add_subdirectory(src)
 add_subdirectory(tools)
 option(WITH_TESTS "Build tests" ON)
